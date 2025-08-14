@@ -1,6 +1,8 @@
 package com.zero.benchmark.pojo;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
@@ -9,6 +11,8 @@ import java.time.LocalDateTime;
 import java.util.*;
 
 @Data
+@AllArgsConstructor
+@NoArgsConstructor
 public class ComplexEntity implements Serializable {
     // 基本数据类型
     private int id;
@@ -33,24 +37,24 @@ public class ComplexEntity implements Serializable {
     private LocalDate birthday;
     private LocalDateTime lastLogin;
     // 构造函数
-    public ComplexEntity(int id, double score, boolean active, char level, String name,
-                         BigDecimal balance, List<String> tags, Set<Integer> numbers,
-                         Map<String, String> attributes, int[] scoresArray, String[] aliasArray,
-                         LocalDate birthday, LocalDateTime lastLogin) {
-        this.id = id;
-        this.score = score;
-        this.active = active;
-        this.level = level;
-        this.name = name;
-        this.balance = balance;
-        this.tags = tags;
-        this.numbers = numbers;
-        this.attributes = attributes;
-        this.scoresArray = scoresArray;
-        this.aliasArray = aliasArray;
-        this.birthday = birthday;
-        this.lastLogin = lastLogin;
-    }
+//    public ComplexEntity(int id, double score, boolean active, char level, String name,
+//                         BigDecimal balance, List<String> tags, Set<Integer> numbers,
+//                         Map<String, String> attributes, int[] scoresArray, String[] aliasArray,
+//                         LocalDate birthday, LocalDateTime lastLogin) {
+//        this.id = id;
+//        this.score = score;
+//        this.active = active;
+//        this.level = level;
+//        this.name = name;
+//        this.balance = balance;
+//        this.tags = tags;
+//        this.numbers = numbers;
+//        this.attributes = attributes;
+//        this.scoresArray = scoresArray;
+//        this.aliasArray = aliasArray;
+//        this.birthday = birthday;
+//        this.lastLogin = lastLogin;
+//    }
 
     // 示例方法
     public static void main(String[] args) {
