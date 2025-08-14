@@ -1,4 +1,4 @@
-package com.zero.benchmark.pojo;
+package com.zero.pojo;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

@@ -20,6 +20,7 @@
         <jackson.version>2.19.2</jackson.version>
         <lombok.version>1.18.38</lombok.version>
         <logback.version>1.5.18</logback.version>
+        <disruptor.version>3.4.2</disruptor.version>
     </properties>
     <dependencies>
         <!-- JMH -->
@@ -32,6 +33,12 @@
             <groupId>org.openjdk.jmh</groupId>
             <artifactId>jmh-generator-annprocess</artifactId>
             <version>${jmh.version}</version>
+        </dependency>
+        <!-- Disruptor 高性能内存队列 -->
+        <dependency>
+            <groupId>com.lmax</groupId>
+            <artifactId>disruptor</artifactId>
+            <version>${disruptor.version}</version>
         </dependency>
         <!-- msgpack -->
         <dependency>

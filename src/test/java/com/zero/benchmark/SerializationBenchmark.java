@@ -7,7 +7,7 @@ import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateDeserializer;
 import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
 import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateSerializer;
 import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
-import com.zero.benchmark.pojo.ComplexEntity;
+import com.zero.pojo.ComplexEntity;
 import org.apache.fory.Fory;
 import org.apache.fory.config.Language;
 import org.msgpack.jackson.dataformat.MessagePackFactory;

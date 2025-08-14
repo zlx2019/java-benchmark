@@ -1,4 +1,4 @@
-package com.zero.benchmark.pojo;
+package com.zero.pojo;
 
 import lombok.Data;
 import org.apache.fory.Fory;
