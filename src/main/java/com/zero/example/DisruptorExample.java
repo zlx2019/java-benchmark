@@ -6,7 +6,7 @@ import com.lmax.disruptor.dsl.ProducerType;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 
-import java.nio.ByteBuffer;
+import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
@@ -20,7 +20,7 @@ public class DisruptorExample {
 
     public static void main(String[] args) throws InterruptedException, InsufficientCapacityException {
         // Disruptor 环形数组大小
-        int bufferSize = 8;
+        int bufferSize = 2;
         // 创建队列
         Disruptor<UserEvent> disruptor = new Disruptor<>(
                 UserEvent::new,
@@ -37,35 +37,163 @@ public class DisruptorExample {
 
         // 获取队列缓冲区
         RingBuffer<UserEvent> ringBuffer = disruptor.getRingBuffer();
-        ByteBuffer buf = ByteBuffer.allocate(8);
-        buf.putLong(System.currentTimeMillis());
+//        ByteBuffer buf = ByteBuffer.allocate(8);
+//        buf.putLong(System.currentTimeMillis());
 
         // mark 第一种发布事件方式
-        // 手动获取序号，发布
-        long seq = ringBuffer.next(); // 获取下一个可用序号
-        UserEvent event = ringBuffer.get(seq); // 获取该序号事件
-        event.setUserId(buf.getLong(0));
-        ringBuffer.publish(seq);    // 发布事件
+        publish(ringBuffer, System.currentTimeMillis());
 
         TimeUnit.SECONDS.sleep(1);
 
         // mark 第二种, 通过转换器
-        buf.flip();
-        buf.putLong(System.currentTimeMillis());
-        EventTranslatorOneArg<UserEvent, Long> TRANSLATOR = (e, sequence, userId) -> e.setUserId(userId);
-        ringBuffer.publishEvent(TRANSLATOR, buf.getLong(0));
+        publishEvent(ringBuffer, System.currentTimeMillis());
 
-        TimeUnit.SECONDS.sleep(1);
+        TimeUnit.SECONDS.sleep(3);
 
-        // mark 第三种 非阻塞式发布事件, 如果没有多余的空间，则返回false
-        buf.flip();
-        buf.putLong(System.currentTimeMillis());
-        ringBuffer.tryPublishEvent(TRANSLATOR, buf.getLong(0));
+//        publishEvent(ringBuffer, System.currentTimeMillis());
 
-        buf.clear();
+        // mark 批量发布
+        batchPublish(ringBuffer, List.of(1001L, 2001L));
+
+        // 非阻塞式批量发布，失败则false
+        boolean tried = tryBatchPublish(ringBuffer, List.of(1002L, 2002L, 3002L));
+        System.out.println(tried);
+//
+//        TimeUnit.SECONDS.sleep(3);
+//        batchPublish(ringBuffer, List.of(4001L, 5001L, 6001L));
+
+
+//        buf.flip();
+//        buf.putLong(System.currentTimeMillis());
+//        EventTranslatorOneArg<UserEvent, Long> TRANSLATOR = (e, sequence, userId) -> e.setUserId(userId);
+//        ringBuffer.publishEvent(TRANSLATOR, buf.getLong(0));
+//
+////        TimeUnit.SECONDS.sleep(1);
+//
+//        // mark 第三种 非阻塞式发布事件, 如果没有多余的空间，则返回false
+//        buf.flip();
+//        buf.putLong(System.currentTimeMillis());
+////        boolean b = ringBuffer.tryPublishEvent(TRANSLATOR, buf.getLong(0));
+////        System.out.println(b);
+//
+//        buf.clear();
         Thread.sleep(3000);
         disruptor.shutdown();
     }
+
+    /// 转换器
+    private static final EventTranslatorOneArg<UserEvent,Long> TRANSLATOR = (event, seq,userId) -> {
+        event.setUserId(userId);
+    };
+
+    /**
+     * 手动发布事件
+     */
+    static void publish(RingBuffer<UserEvent> buffer, long userId) {
+        // 获取下一个可用的序号
+        long seq = buffer.next();
+        try {
+            UserEvent event = buffer.get(seq); // 获取序号元素
+            event.setUserId(userId); // 设置元素值
+        }finally {
+            // 无论如何, 都要将这个序号发布出去，否则整个队列都会阻塞.
+            buffer.publish(seq);
+        }
+    }
+
+    /**
+     * 通过转换器发布事件, 更安全由 Disruptor sdk 封装.
+     */
+    static void publishEvent(RingBuffer<UserEvent> buffer, long userId) {
+        buffer.publishEvent(TRANSLATOR, userId);
+    }
+
+    /**
+     * 非阻塞时发布事件, 发布失败则返回false
+     */
+    private static boolean tryPublish(RingBuffer<UserEvent> ringBuffer, Long userId) {
+        try {
+            long seq = ringBuffer.tryNext();
+            try {
+                UserEvent event = ringBuffer.get(seq);
+                event.setUserId(userId);
+            }finally {
+                ringBuffer.publish(seq);
+            }
+            return true;
+        } catch (InsufficientCapacityException e) {
+            return false;
+        }
+    }
+
+    /**
+     * 非阻塞发布, 发布失败直接返回 false
+     */
+    private static boolean tryPublishEvent(RingBuffer<UserEvent> ringBuffer, Long userId) {
+        return ringBuffer.tryPublishEvent(TRANSLATOR, userId);
+    }
+
+    /**
+     * 批量发布事件
+     */
+    private static void batchPublish(RingBuffer<UserEvent> ringBuffer, List<Long> userIds) {
+        int size = userIds.size();
+        // 批量获取可用多个序号
+        long endSeq = ringBuffer.next(size); // 获取到的结尾序号
+        long startSeq = endSeq - (size - 1); // 获取到的起始序号
+        try {
+            // 填充元素值
+            for (int i = 0; i < size; i++) {
+                long seq = startSeq + i;
+                UserEvent event = ringBuffer.get(seq);
+                event.setUserId(userIds.get(i));
+            }
+        }finally {
+            // 必须保证这一批序号发布
+            ringBuffer.publish(startSeq, endSeq);
+        }
+    }
+
+    /**
+     * 通过转换器批量发布事件
+     */
+    static void batchPublishEvent(RingBuffer<UserEvent> ringBuffer, List<Long> userIds) {
+        ringBuffer.publishEvents(TRANSLATOR, userIds.toArray(new Long[0]));
+    }
+
+    /**
+     * 非阻塞式批量发布事件
+     */
+    static boolean tryBatchPublish(RingBuffer<UserEvent> ringBuffer, List<Long> userIds) {
+        int size = userIds.size();
+        try {
+            // 批量获取可用多个序号
+            long endSeq = ringBuffer.tryNext(size); // 获取到的结尾序号
+            long startSeq = endSeq - (size - 1); // 获取到的起始序号
+            try {
+                // 填充元素值
+                for (int i = 0; i < size; i++) {
+                    long seq = startSeq + i;
+                    UserEvent event = ringBuffer.get(seq);
+                    event.setUserId(userIds.get(i));
+                }
+                return true;
+            }finally {
+                ringBuffer.publish(startSeq, endSeq);
+            }
+
+        } catch (InsufficientCapacityException e) {
+            return false;
+        }
+    }
+
+    /**
+     * 非阻塞式批量发布事件
+     */
+    static boolean tryBatchPublishEvent(RingBuffer<UserEvent> ringBuffer, List<Long> userIds) {
+         return ringBuffer.tryPublishEvents(TRANSLATOR, userIds.toArray(new Long[0]));
+    }
+
 
     /**
      * 用户事件, 作为队列中的数据元素
@@ -110,7 +238,6 @@ public class DisruptorExample {
         @Override
         public void onEvent(UserEvent userEvent) throws Exception {
             log.info("USER-EVENT: {}", userEvent);
-            throw new RuntimeException("模拟的异常!!!");
         }
     }
 
